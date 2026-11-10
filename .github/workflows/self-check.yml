@@ -1,0 +1,22 @@
+# Lints the workflows in this repository on every push and pull request.
+name: self-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: actionlint
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@latest -color
