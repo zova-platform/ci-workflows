@@ -1,0 +1,77 @@
+# Reusable CI for Go repositories: lint, race tests and vulnerability check.
+#
+# Usage (in a service repo):
+#   jobs:
+#     go:
+#       uses: zova-platform/ci-workflows/.github/workflows/go-ci.yml@v1
+name: go-ci
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: Path to go.mod (or .go-version) used to pick the Go version
+        type: string
+        default: go.mod
+      golangci-lint-version:
+        description: golangci-lint version (v2.x)
+        type: string
+        default: v2.13
+      working-directory:
+        description: Directory of the Go module
+        type: string
+        default: .
+      race:
+        description: Run tests with the race detector
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ inputs.working-directory }}/${{ inputs.go-version-file }}
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ inputs.golangci-lint-version }}
+          working-directory: ${{ inputs.working-directory }}
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ inputs.working-directory }}/${{ inputs.go-version-file }}
+      - name: Download modules
+        run: go mod download
+      - name: Test
+        # Docker is available on ubuntu runners, so testcontainers-go works here.
+        run: go test ${{ inputs.race && '-race' || '' }} -count=1 -coverprofile=coverage.out ./...
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -n 1
+
+  vuln:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ inputs.working-directory }}/${{ inputs.go-version-file }}
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
