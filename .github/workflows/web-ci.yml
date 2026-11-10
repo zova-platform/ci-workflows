@@ -1,0 +1,47 @@
+# Reusable CI for the Vite + React web apps: install, lint, typecheck, build.
+#
+# The repo must define "lint", "typecheck" and "build" scripts in package.json
+# and a "packageManager" field (e.g. "pnpm@10.x.x") so pnpm/action-setup picks the version.
+#
+# Usage:
+#   jobs:
+#     web:
+#       uses: zova-platform/ci-workflows/.github/workflows/web-ci.yml@v1
+name: web-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version
+        type: string
+        default: "24"
+      working-directory:
+        description: Directory containing package.json
+        type: string
+        default: .
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: lint, typecheck, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ${{ inputs.working-directory }}/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
