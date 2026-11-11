@@ -53,7 +53,7 @@ jobs:
       image: ${{ steps.vars.outputs.image }}
       version: ${{ steps.vars.outputs.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Image name
         id: vars
